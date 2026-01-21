@@ -1,0 +1,24 @@
+@startuml
+title 预习任务
+
+participant "客户端" as client
+participant "服务端" as server
+participant "大模型" as llm
+
+client -> server: 发起生成作业
+server -> server: 保存生成作业请求记录
+server --> client: 作业状态：生成中
+
+server -> server: 异步生成预习作业,脚本获取需要生成作业的记录
+server -> server: 整理请求生成作业需要的数据
+alt 存在预习作业
+    server -> server: 请求生成作业的数据 加入 预习作业情况
+end
+
+server -> llm: 请求生成作业
+llm -> llm: 生成作业
+llm --> server: 返回生成结果
+
+server -> server: 保存生成作业结果
+server --> client: 作业状态：已生成
+@enduml

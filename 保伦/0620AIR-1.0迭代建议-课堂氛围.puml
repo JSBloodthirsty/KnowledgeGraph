@@ -1,0 +1,23 @@
+@startuml
+title 课堂氛围
+
+participant "客户端" as client
+participant "录播" as recorder
+participant "平台" as server
+participant "大模型" as llm
+
+client -> recorder: 老师上课
+recorder -> server: 3秒同步一次课堂的氛围状况
+server -> server: 存储课堂氛围数据
+
+client -> server: 获取课堂氛围数据
+alt 1分钟内，课堂氛围持续低迷
+    server -> server: 整理分析课堂氛围数据
+    server -> llm: 去请求分析并生成解决方案
+    llm -> llm: 分析并生成解决方案
+    llm --> server: 返回分析和解决方案
+    server -> server: 存储分析结果
+end
+
+server --> client: 返回课堂氛围数据
+@enduml

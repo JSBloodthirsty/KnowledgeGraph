@@ -1,0 +1,84 @@
+@startuml
+top to bottom direction
+title ai功能架构图
+
+' 定义样式（可选，美化用）
+skinparam package {
+    BackgroundColor #f0f8ff
+    BorderColor #2f4f4f
+}
+skinparam component {
+    BackgroundColor #e6f7ff
+    BorderColor #1890ff
+}
+
+skinparam database {
+    BackgroundColor #f6ffed
+    BorderColor #52c41a
+}
+
+skinparam component.thirdPartyService {
+    BackgroundColor #f9f0ff
+    BorderColor #722ed1
+}
+
+' 接入层
+package "客户端" as client {
+    actor "PC" as client1
+    actor "安卓" as client2
+    actor "ios" as client3
+}
+
+' 业务层
+package "服务层" as server {
+    package "平台服务器" {
+        package "web服务器" as webServer {
+            agent "Nginx" as nginx
+        }
+
+        package "系统应用" as platformModule {
+            component "AI小助手"
+            component "学习助手"
+            component "知识讲解"
+            component "题目解析"
+            component "写作辅导"
+            component "学习计划"
+            component "课堂学习分析"
+            component "我的错题"
+            component "我的预习"
+            component "学生寄语"
+            component "学习规划"
+            component "教案ppt"
+            component "ai-智慧组卷"
+            component "老师教学分析"
+            component "校方教学分析"
+        }
+
+        package "数据层" as dataLayer {
+            database "MySQL" as mysqlDB
+            database "Redis缓存" as redisCache
+        }
+
+        agent "脚本分析" as analysisScript
+    }
+
+    package "三方服务" as thirdPartyService {
+        component "火山大模型" as doubao
+        component "文多多" as wenduoduo
+    }
+}
+
+cloud "网络" as network #f9f0ff
+
+' 正向流程
+client <--> network
+network <--> webServer
+webServer <--> platformModule
+
+platformModule <--> dataLayer
+
+platformModule <-.-> thirdPartyService
+
+analysisScript <--> dataLayer
+
+@enduml
