@@ -1,0 +1,87 @@
+@startuml LVS_Cluster_ECMP_Architecture
+
+' 样式定义
+skinparam monochrome false
+skinparam componentStyle rectangle
+skinparam node {
+  BackgroundColor #e0f7fa
+  BorderColor #006064
+}
+skinparam cloud {
+  BackgroundColor #f3e5f5
+  BorderColor #7b1fa2
+}
+skinparam database {
+  BackgroundColor #fff9c4
+  BorderColor #fbc02d
+}
+
+title LVS 集群扩容架构 (ECMP - 等价多路径路由)
+
+' === 客户端 ===
+node "用户 (10亿并发)" as Client
+
+' === 核心网络层 ===
+cloud "互联网骨干网" as Internet
+
+node "核心交换机 (Core Switch)" as Switch {
+  component "路由表 (FIB)" as FIB
+  note right: ECMP 策略:\nVIP 有 4 个下一跳
+}
+
+' === LVS 集群层 (真正的分发层) ===
+rectangle "LVS 负载均衡集群 (4台同时工作)" {
+  node "LVS Node 1 (Active)" as LVS1 {
+    [VIP: 1.1.1.1]
+    [Keepalived]
+    [IPVS]
+  }
+
+  node "LVS Node 2 (Active)" as LVS2 {
+    [VIP: 1.1.1.1]
+    [Keepalived]
+    [IPVS]
+  }
+
+  node "LVS Node 3 (Active)" as LVS3 {
+    [VIP: 1.1.1.1]
+    [Keepalived]
+    [IPVS]
+  }
+
+  node "LVS Node 4 (Active)" as LVS4 {
+    [VIP: 1.1.1.1]
+    [Keepalived]
+    [IPVS]
+  }
+}
+
+' === 后端服务层 ===
+rectangle "Nginx / AccessSvr 集群" {
+  node "RS 1" as RS1
+  node "RS 2" as RS2
+  node "RS ..." as RS_N
+}
+
+' === 连线逻辑 ===
+
+' 1. 用户 -> 交换机
+Client -> Internet
+Internet -> Switch : 请求流量洪峰
+
+' 2. 交换机 ECMP 分流 (关键!)
+Switch -[#red,bold]down-> LVS1 : 路径 1 (Hash A)
+Switch -[#red,bold]down-> LVS2 : 路径 2 (Hash B)
+Switch -[#red,bold]down-> LVS3 : 路径 3 (Hash C)
+Switch -[#red,bold]down-> LVS4 : 路径 4 (Hash D)
+note on link: 核心交换机把流量均匀打散\n4台 LVS 同时处理分发任务
+
+' 3. LVS 内部调度
+LVS1 --> RS1 : 分发
+LVS1 --> RS2
+LVS2 --> RS1
+LVS2 --> RS_N
+LVS3 --> RS2
+LVS4 --> RS_N
+
+@enduml

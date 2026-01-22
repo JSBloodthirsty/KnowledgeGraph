@@ -1,0 +1,111 @@
+@startuml 微信10亿级高并发架构图
+' 定义样式
+skinparam rectangle {
+    BackgroundColor #f9f9f9
+    BorderColor #333
+    Shadowing false
+}
+skinparam database {
+    BackgroundColor #e1f5fe
+    BorderColor #01579b
+}
+skinparam component {
+    BackgroundColor #e8f5e9
+    BorderColor #2e7d32
+}
+skinparam queue {
+    BackgroundColor #fff3e0
+    BorderColor #ef6c00
+}
+
+title 微信高并发消息架构 (10亿级支撑)
+
+' 客户端层
+node "客户端集群 (10亿+)" {
+    [iOS/Android/PC] as Client1
+    [小程序/Web] as Client2
+}
+
+' 接入层 (流量入口)
+rectangle "接入层 (LVS + Nginx + AccessSvr)" {
+    database "LVS 负载均衡" as LVS
+    node "Nginx/Tengine 集群" as Nginx {
+        [接入节点 A]
+        [接入节点 B]
+        [接入节点 ...]
+    }
+    node "逻辑接入层 (AccessSvr)" as AccessCluster {
+        [Conn Svr 1]
+        [Conn Svr 2]
+        [Conn Svr N]
+    }
+}
+
+' 消息队列 (核心缓冲)
+queue "消息队列 (Kafka/RocketMQ)" as MQ {
+    [Topic: MsgSend]
+    [Topic: MsgPush]
+    [Topic: Log]
+}
+
+' 核心业务层
+rectangle "核心业务逻辑层 (微服务集群)" {
+    node "发送服务 (SendSvr)" as SendSvr {
+        [反垃圾/鉴权]
+        [消息路由]
+    }
+    node "存储服务 (StoreSvr)" as StoreSvr {
+        [数据落盘]
+        [索引更新]
+    }
+    node "推送服务 (PushSvr)" as PushSvr {
+        [在线推送]
+        [离线推送(APNs)]
+    }
+    node "社交关系 (RelationSvr)" as RelationSvr
+}
+
+' 存储层
+rectangle "存储层 (冷热分离 + 分片)" {
+    database "缓存层 (Redis/Tair 集群)" as Cache {
+        [用户状态]
+        [未读计数]
+        [热消息]
+    }
+    database "数据库层 (TBase/MySQL 分片)" as DB {
+        [分片 001]
+        [分片 002]
+        [分片 ...N]
+    }
+    database "归档存储 (对象存储)" as Archive {
+        [历史消息]
+    }
+}
+
+' 连线关系
+Client1 -down-> LVS
+Client2 -down-> LVS
+LVS -down-> Nginx
+Nginx -down-> AccessCluster
+
+' 发送流程
+AccessCluster -down-> SendSvr : 1.接收消息
+SendSvr -down-> RelationSvr : 2.查关系/权限
+SendSvr -down-> MQ : 3.写入队列(异步)
+MQ -down-> StoreSvr : 4.消费写入
+StoreSvr -down-> Cache : 5.更新缓存
+StoreSvr -down-> DB : 6.持久化DB
+
+' 推送流程
+StoreSvr -down-> MQ : 7.触发推送事件
+MQ -down-> PushSvr : 8.消费推送
+PushSvr -right-> AccessCluster : 9.查找在线节点
+AccessCluster -up-> Client1 : 10.推送消息
+
+' 读取流程
+Client1 -down-> AccessCluster : 拉取历史
+AccessCluster -down-> StoreSvr
+StoreSvr -up-> Cache : 查热数据
+StoreSvr -down-> DB : 查冷数据
+
+@enduml
