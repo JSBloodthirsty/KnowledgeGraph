@@ -71,14 +71,18 @@ package "服务层" as server {
 cloud "网络" as network #f9f0ff
 
 ' 正向流程
-client <--> network
-network <--> webServer
-webServer <--> platformModule
+client --> network : 1.发起请求
+network --> webServer : 2.请求web服务器
+webServer ..> platformModule : 3.调用系统应用
 
-platformModule <--> dataLayer
+platformModule <..> dataLayer : 调用数据
 
-platformModule <-.-> thirdPartyService
+platformModule <-.-> thirdPartyService : 服务调用
 
-analysisScript <--> dataLayer
+analysisScript <-.-> dataLayer : 调用数据
 
+' 响应流程
+network ..> client : 4.响应请求
+webServer ..> network : 4.响应请求
+platformModule ..> webServer : 4.响应请求
 @enduml
